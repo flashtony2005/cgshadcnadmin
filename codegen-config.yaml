@@ -1,0 +1,27 @@
+project:
+  name: "my-frontend-app"
+  output_dir: "{{ get_env(name='OUTPUT_DIR', default='./generated_frontend') }}"
+  api_base_url: "{{ get_env(name='API_BASE_URL', default='/api') }}"
+  frontend_framework: "react"
+  database:  # 移动 database 到 project 下
+    uri: "{{ get_env(name='DATABASE_URL', default='postgres://postgres:postgres@localhost:5433/postgres') }}"
+    enable_logging: "{{ get_env(name='ENABLE_LOGGING', default='true') }}"
+    connect_timeout: "{{ get_env(name='DB_CONNECT_TIMEOUT', default='500') }}"
+    idle_timeout: "{{ get_env(name='DB_IDLE_TIMEOUT', default='500') }}"
+    min_connections: "{{ get_env(name='DB_MIN_CONNECTIONS', default='1') }}"
+    max_connections: "{{ get_env(name='DB_MAX_CONNECTIONS', default='10') }}"
+    auto_migrate: "{{ get_env(name='AUTO_MIGRATE', default='true') }}"
+    dangerously_truncate: false
+    dangerously_recreate: false
+
+entities:
+  - name:  "{{ get_env(name='ENTITY_NAME', default='tasks') }}"
+    # Frontend配置将通过context构建器从数据库动态生成
+    # 字段定义将从数据库schema自动获取
+    template: "templates/backend/rust/model.jinja"
+    output_dir: "{{ get_env(name='OUTPUT_DIR', default='./generated') }}/backend/models/{{ get_env(name='ENTITY_NAME', default='User') }}.rs"
+
+controllers:
+  - entity: "{{ get_env(name='ENTITY_NAME', default='User') }}"  # From .env file
+    template: "templates/backend/rust/controller.jinja"
+    output_dir: "{{ get_env(name='OUTPUT_DIR', default='./generated') }}/backend/controllers/{{ get_env(name='ENTITY_NAME', default='User') }}.rs"

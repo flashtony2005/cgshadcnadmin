@@ -1,0 +1,40 @@
+import { Header } from '@/components/layout/header'
+import { Main } from '@/components/layout/main'
+import { ProfileDropdown } from '@/components/profile-dropdown'
+import { Search } from '@/components/search'
+import { ThemeSwitch } from '@/components/theme-switch'
+import { {{ entity_pascal_plural_name }}DataTable } from './components/data-table';
+import { {{ entity_pascal_plural_name }}Dialogs } from './components/{{ entity_name_slug }}-dialogs'
+import { {{ entity_pascal_plural_name }}PrimaryButtons } from './components/{{ entity_name_slug }}-primary-buttons'
+import {{ entity_provider_name }} from './context/{{ entity_name_slug }}-context'
+
+export default function {{ entity_pascal_plural_name }}() {
+  return (
+    <{{ entity_provider_name }}>
+      <Header fixed>
+        <Search />
+        <div className='ml-auto flex items-center space-x-4'>
+          <ThemeSwitch />
+          <ProfileDropdown />
+        </div>
+      </Header>
+
+      <Main>
+        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>
+          <div>
+            <h2 className='text-2xl font-bold tracking-tight'>{{ entity_plural_name_friendly }}</h2>
+            <p className='text-muted-foreground'>
+              Here's a list of your {{ entity_plural_name_lower_case or 'items' }}  
+            </p>
+          </div>
+          <{{ entity_pascal_plural_name }}PrimaryButtons />
+        </div>
+        <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>
+          <{{ entity_pascal_plural_name }}DataTable />
+        </div>
+      </Main>
+
+      <{{ entity_pascal_plural_name }}Dialogs />
+    </{{ entity_provider_name }}>
+  )
+}

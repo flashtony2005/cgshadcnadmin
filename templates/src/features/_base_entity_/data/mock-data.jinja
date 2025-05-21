@@ -1,0 +1,10 @@
+\// Mock data for {{ entity_plural_name_lower_case }}
+export const {{ entity_plural_name_camel_case }} = [
+{% for item in mock_data_items %}
+  {
+    {% for key, value in item.items() %}
+    '{{ key }}': {{ value | tojson }}{% if not loop.parent.loop.last or not loop.last %},{% endif %}
+    {% endfor %}
+  }{% if not loop.last %},{% endif %}
+{% endfor %}
+];

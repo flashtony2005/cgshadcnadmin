@@ -1,0 +1,54 @@
+import { {{ entity_type_name_pascal_singular }} } from './schema'
+ 
+
+{# 定义Jinja2宏来生成mock数据 #}
+{% macro generate_mock_value(field, index) %}
+  {% if field.type == 'string' %}
+    "Mock {{ field.name }} value {{ index + 1 }}"
+  {% elif field.type == 'number' %}
+    {{ range(1, 100) | random }}
+  {% elif field.type == 'boolean' %}
+    {{ [true, false] | random }}
+  {% elif field.type == 'date' %}
+    "2023-{{ '%02d' % (range(1, 13)|random) }}-{{ '%02d' % (range(1, 29)|random) }}T{{ '%02d' % (range(0, 24)|random) }}:{{ '%02d' % (range(0, 60)|random) }}:{{ '%02d' % (range(0, 60)|random) }}.000Z"
+  {% elif field.type == 'enum' %}
+    {% if field.options %}
+      "{{ field.options | map(attribute='value') | list | random }}"
+    {% else %}
+      null
+    {% endif %}
+  {% else %}
+    null
+  {% endif %}
+{% endmacro %}
+
+// 生成实体数据
+export const {{ entity_plural_name_camel_case }}: {{ entity_type_name_pascal_singular }}[] = [
+  {% for i in range(40) %}
+  {
+    {% if entity_fields %}
+      {% for field in entity_fields %}
+        {% if field.primary_key %}
+    {{ field.name }}: '{{ 1001 +  i}}',
+        {% else %}
+    {{ field.name }}: {{ generate_mock_value(field, i) }},
+        {% endif %}
+      {% endfor %}
+    {% else %}
+    // 默认字段（当没有entity_fields时）
+    id: '{{ 1000 + loop.index }}'
+    {% endif %}
+  }{% if not loop.last %},{% endif %}
+  {% endfor %}
+]
+
+// 动态生成选项数据
+{% if entity_fields %}
+  {% for field in entity_fields %}
+    {% if field.options %}
+export const {{ field.name }}Options = {{ field.options|tojson }}
+    {% endif %}
+  {% endfor %}
+{% else %}
+// 默认选项已移除（当没有entity_fields时）
+{% endif %}

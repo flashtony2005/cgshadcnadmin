@@ -1,0 +1,40 @@
+import { z } from 'zod'
+
+/**
+ * Schema validation
+ * 
+ * Error messages are now direct English strings
+ */
+
+ 
+export const {{ entity_schema_name }} = z.object({
+{%- for field in entity_fields %}
+  {%- if field.zod_type %}
+  {{ field.name }}: {{ field.zod_type }}{% if field.validations %}{{ field.validations }}{% endif %},
+  {{ '\n' }}
+  {%- elif field.type == 'string' %}
+  {{ field.name }}: z.string(){% if field.required %}.min(1, 'Field is required'){% endif %},
+  {{ '\n' }}
+  {%- elif field.type == 'number' %}
+  {{ field.name }}: z.number(){% if field.required %}.min(1, 'Field is required'){% endif %},
+  {{ '\n' }}
+  {%- elif field.type == 'boolean' %}
+  {{ field.name }}: z.boolean(),
+  {{ '\n' }}
+  {%- elif field.type == 'date' %}
+  {{ field.name }}: z.string().datetime(),
+  {{ '\n' }}
+  {%- elif field.type == 'enum' %}
+  {{ field.name }}: z.string(){% if field.required %}.min(1, 'Field is required'){% endif %},
+  {{ '\n' }}
+  {%- else %}
+  {{ field.name }}: z.unknown(),
+  {{ '\n' }}
+  {%- endif %}
+{%- endfor %}
+})
+/**
+ * TypeScript type derived from Zod schema
+ * Use this type for all {{ entity_type_name_pascal_singular }} related operations
+ */
+export type {{ entity_type_name_pascal_singular }} = z.infer<typeof {{ entity_schema_name }}>

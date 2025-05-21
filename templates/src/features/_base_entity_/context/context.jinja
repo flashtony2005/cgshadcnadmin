@@ -1,0 +1,84 @@
+import React, { useState, createContext, useContext, useCallback } from 'react'
+import useDialogState from '@/hooks/use-dialog-state'
+import { {{ entity_type_name_pascal_singular }} } from '../data/schema'
+// Initial data import - adjust if your data file has different name
+import { {{ entity_plural_name_camel_case }} as initial{{ entity_pascal_plural_name }}Data } from '../data/{{ entity_data_file_name }}'
+
+type {{ entity_dialog_type }} = 'create' | 'update' | 'delete' | 'import'
+
+interface {{ entity_context_type }} {
+  // Dialog and current row state
+  open: {{ entity_dialog_type }} | null
+  setOpen: (str: {{ entity_dialog_type }} | null) => void
+  currentRow: {{ entity_type_name_pascal_singular }} | null
+  setCurrentRow: React.Dispatch<React.SetStateAction<{{ entity_type_name_pascal_singular }} | null>>
+  
+  // {{ entity_pascal_plural_name }} data and CRUD operations
+  {{ entity_plural_name_camel_case }}: {{ entity_type_name_pascal_singular }}[]
+  {{ add_entity_func }}: ({{ entity_name_camel_case }}Data: Omit<{{ entity_type_name_pascal_singular }}, 'id' | 'status' | 'label' | 'priority'> & Partial<Pick<{{ entity_type_name_pascal_singular }}, 'status' | 'label' | 'priority'>>) => void // id 会自动生成，其他可选
+  {{ update_entity_func }}: ({{ entity_name_camel_case }}Id: string, updates: Partial<{{ entity_type_name_pascal_singular }}>) => void
+  {{ delete_entity_func }}: ({{ entity_name_camel_case }}Id: string) => void
+}
+
+const {{ entity_pascal_plural_name }}Context = createContext<{{ entity_context_type }} | null>(null)
+
+interface Props {
+  children: React.ReactNode
+}
+
+export default function {{ entity_provider_name }}({ children }: Props) {
+  const [open, setOpen] = useDialogState<{{ entity_dialog_type }}>(null)
+  const [currentRow, setCurrentRow] = useState<{{ entity_type_name_pascal_singular }} | null>(null)
+  
+  // 从导入的数据初始化任务列表状态
+  const [{{ entity_plural_name_camel_case }}, set{{ entity_pascal_plural_name }}] = useState<{{ entity_type_name_pascal_singular }}[]>(initial{{ entity_pascal_plural_name }}Data || [])
+
+  const {{ add_entity_func }} = useCallback(({{ entity_name_camel_case }}Data: Omit<{{ entity_type_name_pascal_singular }}, 'id' | 'status' | 'label' | 'priority'> & Partial<Pick<{{ entity_type_name_pascal_singular }}, 'status' | 'label' | 'priority'>>) => {
+    set{{ entity_pascal_plural_name }}((prev{{ entity_pascal_plural_name }}) => [
+      ...prev{{ entity_pascal_plural_name }},
+      {
+        id: `{{ entity_type_name_pascal_singular | upper }}-{{ '{' }}Date.now(){{ '}' }}`, // 简单的 ID 生成
+        status: {{ entity_name_camel_case }}Data.status || 'todo', // 默认值
+        label: {{ entity_name_camel_case }}Data.label || 'feature', // 默认值
+        priority: {{ entity_name_camel_case }}Data.priority || 'medium', // 默认值
+        ...{{ entity_name_camel_case }}Data,
+      },
+    ])
+  }, [])
+
+  const {{ update_entity_func }} = useCallback(({{ entity_name_camel_case }}Id: string, updates: Partial<{{ entity_type_name_pascal_singular }}>) => {
+    set{{ entity_pascal_plural_name }}((prev{{ entity_pascal_plural_name }}) =>
+      prev{{ entity_pascal_plural_name }}.map(({{ entity_name_camel_case }}) =>
+        {{ entity_name_camel_case }}.id === {{ entity_name_camel_case }}Id ? { ...{{ entity_name_camel_case }}, ...updates } : {{ entity_name_camel_case }}
+      )
+    )
+  }, [])
+
+  const {{ delete_entity_func }} = useCallback(({{ entity_name_camel_case }}Id: string) => {
+    set{{ entity_pascal_plural_name }}((prev{{ entity_pascal_plural_name }}) => prev{{ entity_pascal_plural_name }}.filter(({{ entity_name_camel_case }}) => {{ entity_name_camel_case }}.id !== {{ entity_name_camel_case }}Id))
+  }, [])
+
+  return (
+    <{{ entity_pascal_plural_name }}Context.Provider 
+      value={{ '{' }}{{ '{' }} 
+        open, setOpen, 
+        currentRow, setCurrentRow,
+        {{ entity_plural_name_camel_case }}, 
+        {{ add_entity_func }}, {{ update_entity_func }}, {{ delete_entity_func }} 
+      {{ '}' }}{{ '}' }}
+    >
+      {{ '{' }}children{{ '}' }}
+    </{{ entity_pascal_plural_name }}Context.Provider>
+  )
+}
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const {{ use_entity_hook }} = () => {
+  const {{ entity_name_camel_case }}Context = useContext({{ entity_pascal_plural_name }}Context)
+
+  if (!{{ entity_name_camel_case }}Context) {
+    throw new Error('{{ use_entity_hook }} has to be used within <{{ entity_provider_name }}>')
+  }
+
+  return {{ entity_name_camel_case }}Context
+}

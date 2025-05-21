@@ -1,0 +1,247 @@
+import * as React from 'react'
+ 
+import { ColumnDef, Column, Row } from '@tanstack/react-table'
+
+// Define an interface for the structure of items in entity_fields
+// This helps ensure that the data from {{ entity_fields }} is used correctly.
+interface EntityField {
+  name: string; // The key for accessing data in a row object
+  type: string; // Data type (e.g., 'string', 'number', 'date', 'enum')
+  label?: string; // User-friendly label for the column header
+  options?: Array<{ value: any; label: string; icon?: React.ComponentType<{ className?: string }> }>; // Options for 'enum' type or faceted filters
+  sortable?: boolean; // Whether the column should be sortable (defaults to true)
+  hidden?: boolean; // Whether the column should be hidden by default or unhideable (defaults to false, meaning visible and hideable)
+  // columnOptions?: any; // For any other @tanstack/react-table column options, if needed
+}
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+
+// Import通用 DataTable 组件及其子组件和类型
+import { DataTable } from '../../../components/data-table/data-table'
+import { DataTableColumnHeader } from '../../../components/data-table/data-table-column-header'
+import {
+  DataTableRowActions,
+  ActionLabelOption,
+  // CustomActionItem // 如果需要自定义操作，取消注释
+} from '../../../components/data-table/data-table-row-actions'
+import { FacetedFilterConfigItem } from '../../../components/data-table/data-table-toolbar'
+
+// Import特定于实体的数据、类型和上下文
+import { {{ entity_type_name_pascal_singular }} } from '../data/schema'
+// Import data options for labels, statuses, priorities
+import * as {{ entity_name_camel_case_singular_prefix }}DataAll from '../data/data';
+
+const {{ entity_name_camel_case_singular_prefix }}LabelData = ({{ entity_name_camel_case_singular_prefix }}DataAll as any)?.labels ?? [];
+const {{ entity_name_camel_case_singular_prefix }}PriorityData = ({{ entity_name_camel_case_singular_prefix }}DataAll as any)?.priorities ?? [];
+const {{ entity_name_camel_case_singular_prefix }}StatusData = ({{ entity_name_camel_case_singular_prefix }}DataAll as any)?.statuses ?? [];
+import { {{ use_entity_hook }} } from '../context/{{ entity_name_slug }}-context'
+
+/**
+ * DataTable component for displaying {{ entity_pascal_plural_name }}
+ * Features:
+ * - Column sorting/filtering
+ * - Row selection
+ * - CRUD operations
+ * - Label management
+ */
+export function {{ entity_type_name_pascal_singular }}DataTable() {
+ 
+  // 从 context 获取实体数据和操作函数
+  // 确保 {{ use_entity_hook }} 返回的对象包含这些属性，根据我们对 {{ entity_pascal_plural_name }}Provider 的最新修改，它应该包含
+  const { {{ entity_plural_name_camel_case }}, setOpen, setCurrentRow, {{ update_entity_func }}, {{ delete_entity_func }} /* {{ add_entity_func }} */ } = {{ use_entity_hook }}()
+  // Assuming entity_fields comes from a stable source (e.g., context, props, or is static for the entity)
+  // If entity_fields can change dynamically during the component's lifecycle based on other state/props not reflected here,
+  // a more complex memoization for entityFieldsReference might be needed.
+  
+  // 为 DataTableRowActions 定义操作处理函数
+  const handleEdit{{ entity_type_name_pascal_singular }} = React.useCallback(({{ entity_name_camel_case }}: {{ entity_type_name_pascal_singular }}) => {
+    setCurrentRow({{ entity_name_camel_case }})
+    setOpen('update')
+  }, [setCurrentRow, setOpen])
+
+  const handleDelete{{ entity_type_name_pascal_singular }} = React.useCallback(({{ entity_name_camel_case }}: {{ entity_type_name_pascal_singular }}) => {
+  //  if ({{ delete_entity_func }}) { // 检查函数是否存在
+  //      {{ delete_entity_func }}({{ entity_name_camel_case }}.id) 
+  //  } else {
+        // Fallback or error handling if {{ delete_entity_func }} is not provided by context
+        // console.error('{{ delete_entity_func }} function not available in context'); // Removed console.error
+        setCurrentRow({{ entity_name_camel_case }}) // Still allow opening a dialog if that's part of the flow
+        setOpen('delete')
+   // }
+  }, [{{ delete_entity_func }}, setCurrentRow, setOpen])
+
+  const handleSet{{ entity_type_name_pascal_singular }}Label = React.useCallback(({{ entity_name_camel_case }}: {{ entity_type_name_pascal_singular }}, newLabelValue: string) => {
+    if ({{ update_entity_func }}) { // 检查函数是否存在
+        {{ update_entity_func }}({{ entity_name_camel_case }}.id, { ...{{ entity_name_camel_case }}, label: newLabelValue })
+    } 
+    // else { // Removed console.error
+        // console.error('{{ update_entity_func }} function not available in context');
+    // }
+  }, [{{ update_entity_func }}])
+
+  // 定义数据项的类型
+  interface LabelDataItem {
+    value: string;
+    label: string;
+  }
+  
+  interface StatusDataItem {
+    value: string;
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+  }
+  
+  interface PriorityDataItem {
+    value: string;
+    label: string;
+    icon?: React.ComponentType<{ className?: string }>;
+  }
+
+  const {{ entity_name_camel_case }}LabelOptionsForActions: ActionLabelOption[] = React.useMemo(() =>
+    {{ entity_name_camel_case }}LabelData.map((l: LabelDataItem) => ({
+      value: l.value,
+      label: l.label,
+      // icon: l.icon, // 移除，因为原始 {{ entity_name_camel_case_singular_prefix }}LabelData 类型似乎没有 icon
+    })),
+  [{{ entity_name_camel_case_singular_prefix }}LabelData]);
+
+
+  // 根据entity_fields动态生成列定义
+  const columns = React.useMemo<ColumnDef<{{ entity_type_name_pascal_singular }}>[]>(() => {
+    // 基础列数组，始终包含选择列
+    const baseColumns: ColumnDef<{{ entity_type_name_pascal_singular }}>[] = [
+      // 选择列
+      {
+        id: 'select',
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllPageRowsSelected() ||
+              (table.getIsSomePageRowsSelected() && 'indeterminate')}
+            onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
+            aria-label="Select All"
+            className='translate-y-[2px]'
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(value) => row.toggleSelected(!!value)}
+            aria-label="Select Row"
+            className='translate-y-[2px]'
+          />
+        ),
+        enableSorting: false,
+        enableHiding: false,
+      }
+    ];
+    
+    // 动态列数组，根据entity_fields生成
+    const dynamicColumns: ColumnDef<{{ entity_type_name_pascal_singular }}>[] = [];
+    
+    // 检查entity_fields中是否存在特定字段
+    {% if entity_fields %}
+      {% for field in entity_fields %}
+        {% if field.primary_key %}
+          // 主键列
+          dynamicColumns.push({
+            accessorKey: '{{ field.name }}',
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="{{ field.comment|default(field.name|title) }}" />
+            ),
+            cell: ({ row }) => <div className="w-[80px]">{row.getValue('{{ field.name }}')}</div>,
+            enableSorting: true,
+            enableHiding: false,
+          });
+        {% else %}
+          // 其他普通列
+          dynamicColumns.push({
+            accessorKey: '{{ field.name }}',
+            header: ({ column }) => (
+              <DataTableColumnHeader column={column} title="{{ field.comment|default(field.name|title) }}" />
+            ),
+            cell: ({ row }) => <div>{String(row.getValue('{{ field.name }}') || '-')}</div>,
+            enableSorting: true,
+          });
+        {% endif %}
+      {% endfor %}
+    {% else %}
+      // 如果没有entity_fields，添加默认列
+      dynamicColumns.push({
+        accessorKey: 'id',
+        header: ({ column }) => (
+          <DataTableColumnHeader column={column} title="ID" />
+        ),
+        cell: ({ row }) => <div className="w-[80px]">{row.getValue('id')}</div>,
+        enableSorting: true,
+        enableHiding: false,
+      });
+    {% endif %}
+    
+    // 操作列，始终添加
+    const actionColumn: ColumnDef<{{ entity_type_name_pascal_singular }}> = {
+      id: 'actions',
+      cell: ({ row }) => (
+        <DataTableRowActions<{{ entity_type_name_pascal_singular }}>
+          row={row}
+          onEdit={handleEdit{{ entity_type_name_pascal_singular }}}
+          onDelete={handleDelete{{ entity_type_name_pascal_singular }}}
+          labels={ {{ entity_name_camel_case_singular_prefix }}LabelOptionsForActions }
+          currentLabelValue={row.original.label}
+          onSetLabel={handleSet{{ entity_type_name_pascal_singular }}Label}
+        />
+      ),
+    };
+    
+    // 合并所有列
+    return [...baseColumns, ...dynamicColumns, actionColumn];
+  }, [
+    handleEdit{{ entity_type_name_pascal_singular }},
+    handleDelete{{ entity_type_name_pascal_singular }},
+    handleSet{{ entity_type_name_pascal_singular }}Label,
+    {{ entity_name_camel_case_singular_prefix }}LabelOptionsForActions
+  ]);
+
+
+  // 为 DataTableToolbar 配置 Faceted Filters
+  const facetedFilterConfig = React.useMemo<FacetedFilterConfigItem[]>(() => {
+    const config: FacetedFilterConfigItem[] = []; 
+   
+
+    // 添加固定的 status 和 priority filters (如果它们没有在 entity_fields 中定义 options)
+    // 检查是否已存在 status filter
+    if (!config.some(c => c.columnId === 'status') && {{ entity_name_camel_case_singular_prefix }}StatusData && {{ entity_name_camel_case_singular_prefix }}StatusData.length > 0) {
+      config.push({
+        columnId: 'status',
+        title: 'Status',
+        options: {{ entity_name_camel_case_singular_prefix }}StatusData.map((s: StatusDataItem) => ({ label: s.label, value: s.value, ...(s.icon && { icon: s.icon}) })),
+      });
+    }
+  
+
+    return config;
+  }, [{{ entity_name_camel_case_singular_prefix }}StatusData, {{ entity_name_camel_case_singular_prefix }}PriorityData]);
+
+
+  // 确保实体数据是一个数组，即使 context 初始化时可能为 undefined
+  const {{ entity_plural_name_camel_case }}Data = Array.isArray({{ entity_plural_name_camel_case }}) ? {{ entity_plural_name_camel_case }} : [];
+
+  if (!{{ use_entity_hook }}()) { // Basic check if context is available, though {{ use_entity_hook }} hook itself throws if not in provider
+      return <div>Error: {{ entity_pascal_plural_name }} context not found.</div>;
+  }
+  
+  // 如果 {{ entity_plural_name_camel_case }} 仍在加载（例如，如果 context 异步获取数据），可以显示加载状态
+  // 对于从静态文件导入并用 useState 初始化的简单情况，{{ entity_plural_name_camel_case }} 会立即是数组（空或有数据）
+  // if ({{ entity_plural_name_camel_case }} === undefined) { // A more robust loading check might be needed if data fetching is async
+  //   return <div>Loading {{ entity_plural_name_camel_case }}...</div>;
+  // }
+
+
+  return (
+    <DataTable<{{ entity_type_name_pascal_singular }}, any>
+      columns={columns}
+      data={ {{ entity_plural_name_camel_case }}Data }
+      globalFilterColumnId="id"
+      globalFilterPlaceholder="Filter..."
+    />
+  )
+}

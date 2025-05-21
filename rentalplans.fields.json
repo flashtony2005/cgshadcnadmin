@@ -1,0 +1,88 @@
+{
+  "fields": [
+    {
+      "name": "id",
+      "required": true,
+      "comment": "计划唯一标识",
+      "primary_key": true,
+      "table_name": "rentalplans",
+      "type": "string",
+      "zod_type": "z.string().uuid()",
+      "validations": "",
+      "label": "Id",
+      "show_in_table": false,
+      "show_in_form": false,
+      "enableSorting": true
+    },
+    {
+      "name": "plan_name",
+      "required": true,
+      "comment": "计划名称",
+      "primary_key": false,
+      "table_name": "rentalplans",
+      "type": "string",
+      "zod_type": "z.any()",
+      "validations": "",
+      "label": "Plan Name",
+      "show_in_table": true,
+      "show_in_form": true,
+      "enableSorting": true
+    },
+    {
+      "name": "plan_type",
+      "required": true,
+      "comment": "租用类型",
+      "primary_key": false,
+      "table_name": "rentalplans",
+      "type": "string",
+      "zod_type": "z.any()",
+      "validations": "",
+      "label": "Plan Type",
+      "show_in_table": true,
+      "show_in_form": true,
+      "enableSorting": true
+    },
+    {
+      "name": "description",
+      "required": false,
+      "comment": "计划描述",
+      "primary_key": false,
+      "table_name": "rentalplans",
+      "type": "string",
+      "zod_type": "z.string()",
+      "validations": ".nullable().optional()",
+      "label": "Description",
+      "show_in_table": true,
+      "show_in_form": true,
+      "enableSorting": true
+    },
+    {
+      "name": "created_at",
+      "required": false,
+      "comment": "创建时间",
+      "primary_key": false,
+      "table_name": "rentalplans",
+      "type": "date",
+      "zod_type": "z.any()",
+      "validations": ".nullable().optional()",
+      "label": "Created At",
+      "show_in_table": true,
+      "show_in_form": false,
+      "enableSorting": true
+    },
+    {
+      "name": "updated_at",
+      "required": false,
+      "comment": "更新时间",
+      "primary_key": false,
+      "table_name": "rentalplans",
+      "type": "date",
+      "zod_type": "z.any()",
+      "validations": ".nullable().optional()",
+      "label": "Updated At",
+      "show_in_table": true,
+      "show_in_form": false,
+      "enableSorting": true
+    }
+  ]
+}

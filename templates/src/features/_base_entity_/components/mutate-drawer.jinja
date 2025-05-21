@@ -1,0 +1,307 @@
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { showSubmittedData } from '@/utils/show-submitted-data'
+import { Button } from '@/components/ui/button'
+import { {{ entity_schema_name }} } from '../data/schema'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  Sheet,
+  SheetClose,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
+import { SelectDropdown } from '@/components/select-dropdown'
+import { {{ entity_type_name_pascal_singular }} } from '../data/schema'
+import * as {{ entity_name_camel_case_singular_prefix }}DataAll from '../data/data';
+
+
+
+
+
+// 直接使用从schema文件导入的完整schema
+const formSchema = {{ entity_schema_name }}
+
+type {{ entity_type_name_pascal_singular }}Form = z.infer<typeof formSchema>
+
+export function {{ entity_type_name_pascal_singular }}MutateDrawer({ open, onOpenChange, currentRow }: Props) {
+  const isUpdate = !!currentRow
+
+  const form = useForm<{{ entity_pascal_plural_name }}Form>({
+    resolver: zodResolver(formSchema),
+    defaultValues: currentRow ?? {
+    
+        {% for field in entity_fields %}
+          {% if field.type == 'string' %}
+      {{ field.name }}: '',
+          {% elif field.type == 'number' %}
+      {{ field.name }}: 0,
+          {% elif field.type == 'boolean' %}
+      {{ field.name }}: false,
+          {% elif field.type == 'enum' and field.options %}
+      {{ field.name }}: '{{ field.options[0].value }}',
+          {% elif field.type == 'date' %}
+      {{ field.name }}: new Date().toISOString(),
+          {% else %}
+      {{ field.name }}: null,
+          {% endif %}
+        {% endfor %}
+     
+    }
+  })
+
+  const onSubmit = (data: {{ entity_pascal_plural_name }}Form) => {
+    // do something with the form data
+    onOpenChange(false)
+    form.reset()
+    showSubmittedData(data)
+  }
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={(v) => {
+        onOpenChange(v)
+        form.reset()
+      }}
+    >
+      <SheetContent className='flex flex-col'>
+        <SheetHeader className='text-left'>
+          <SheetTitle>{{ '{' }}isUpdate ? 'Update' : 'Create'{{ '}' }} {{ entity_singular_name_friendly }}</SheetTitle>
+          <SheetDescription>
+            {{ '{' }}isUpdate
+              ? 'Update the {{ entity_singular_name_lower_case }} by providing necessary info.'
+              : 'Add a new {{ entity_singular_name_lower_case }} by providing necessary info.'{{ '}' }}
+            Click save when you're done.
+          </SheetDescription>
+        </SheetHeader>
+        <Form {...form}>
+          <form
+            id='{{ entity_name_camel_case_singular_prefix }}-form'
+            onSubmit={form.handleSubmit(onSubmit)}
+            className='flex-1 space-y-5 px-4'
+          >
+            {# Dynamic form fields based on entity_fields #}
+            {% if entity_fields %}
+              {% for field in entity_fields %}
+                {% if field.primary_key %}
+                  {# Skip primary key fields as they shouldn't be editable #}
+                {% elif field.type == 'string' %}
+            <FormField
+              control={form.control}
+              name='{{ field.name }}'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>{{ field.comment|default(field.name)|title }}</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder='输入 {{ field.comment|default(field.name) }}' />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+                {% elif field.type == 'enum' and field.options %}
+            <FormField
+              control={form.control}
+              name='{{ field.name }}'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>{{ field.comment|default(field.name)|title }}</FormLabel>
+                  <SelectDropdown
+                    defaultValue={field.value}
+                    onValueChange={field.onChange}
+                    placeholder='Select {{ field.comment|default(field.name) }}'
+                    items={[
+                      {% for option in field.options %}
+                      { label: '{{ option.label }}', value: '{{ option.value }}' },
+                      {% endfor %}
+                    ]}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+                {% elif field.type == 'boolean' %}
+            <FormField
+              control={form.control}
+              name='{{ field.name }}'
+              render={({ field }) => (
+                <FormItem className='flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4'>
+                  <FormControl>
+                    <Checkbox
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                  </FormControl>
+                  <div className="space-y-1 leading-none">
+                    <FormLabel>{{ field.comment|default(field.name)|title }}</FormLabel>
+                  </div>
+                </FormItem>
+              )}
+            />
+                {% elif field.type == 'number' %}
+            <FormField
+              control={form.control}
+              name='{{ field.name }}'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>{{ field.comment|default(field.name)|title }}</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      type="number" 
+                      placeholder='输入 {{ field.comment|default(field.name) }}'
+                      onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+                {% elif field.type == 'date' %}
+            <FormField
+              control={form.control}
+              name='{{ field.name }}'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>{{ field.comment|default(field.name)|title }}</FormLabel>
+                  <FormControl>
+                    <Input 
+                      {...field} 
+                      type="date" 
+                      placeholder='Select {{ field.comment|default(field.name) }}'
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+                {% else %}
+            <FormField
+              control={form.control}
+              name='{{ field.name }}'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>{{ field.comment|default(field.name)|title }}</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder='输入 {{ field.comment|default(field.name) }}' />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+                {% endif %}
+              {% endfor %}
+            {% else %}
+              {# Fallback to default fields if no entity_fields provided #}
+            <FormField
+              control={form.control}
+              name='title'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>Title</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder='输入 a title' />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='status'
+              render={({ field }) => (
+                <FormItem className='space-y-1'>
+                  <FormLabel>Status</FormLabel>
+                  <SelectDropdown
+                    defaultValue={field.value}
+                    onValueChange={field.onChange}
+                    placeholder='Select status'
+                    items={ {{ entity_name_camel_case_singular_prefix }}StatusData.map((s: StatusDataItem) => ({ label: s.label, value: s.value }))}
+                  />
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='label'
+              render={({ field }) => (
+                <FormItem className='relative space-y-3'>
+                  <FormLabel>Label</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className='flex flex-col space-y-1'
+                    >
+                      { {{ entity_name_camel_case_singular_prefix }}LabelData.map((l: LabelDataItem) => (
+                        <FormItem key={l.value} className='flex items-c输入 space-y-0 space-x-3'>
+                          <FormControl>
+                            <RadioGroupItem value={l.value} />
+                          </FormControl>
+                          <FormLabel className='font-normal'>
+                            {l.label}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name='priority'
+              render={({ field }) => (
+                <FormItem className='relative space-y-3'>
+                  <FormLabel>Priority</FormLabel>
+                  <FormControl>
+                    <RadioGroup
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      className='flex flex-col space-y-1'
+                    >
+                      { {{ entity_name_camel_case_singular_prefix }}PriorityData.map((p: PriorityDataItem) => (
+                        <FormItem key={p.value} className='flex items-c输入 space-y-0 space-x-3'>
+                          <FormControl>
+                            <RadioGroupItem value={p.value} />
+                          </FormControl>
+                          <FormLabel className='font-normal'>
+                            {p.label}
+                          </FormLabel>
+                        </FormItem>
+                      ))}
+                    </RadioGroup>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            {% endif %}
+          </form>
+        </Form>
+        <SheetFooter className='gap-2'>
+          <SheetClose asChild>
+            <Button variant='outline'>关闭</Button>
+          </SheetClose>
+          <Button form='{{ entity_name_camel_case_singular_prefix }}-form' type='submit'>
+           保存
+          </Button>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
+  )
+}

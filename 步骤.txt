@@ -1,0 +1,366 @@
+ 1.创建目录结构
+在 src/features 目录下创建新的功能模块目录：
+
+src/features/entity-name/  
+├── components/  
+│   ├── columns.tsx  
+│   ├── data-table.tsx  
+│   ├── data-table-row-actions.tsx  
+│   ├── data-table-toolbar.tsx  
+│   ├── entity-name-dialogs.tsx  
+│   ├── entity-name-mutate-drawer.tsx  
+│   └── entity-name-primary-buttons.tsx  
+├── context/  
+│   └── entity-name-context.tsx  
+├── data/  
+│   ├── data.ts  
+│   ├── schema.ts  
+│   └── entity-name.ts  
+└── index.tsx  
+4. 设计数据模型
+在 src/features/entity-name/data/schema.ts 中定义数据模型：
+
+import { z } from "zod"  
+  
+export const entityNameSchema = z.object({  
+  id: z.string(),  
+  title: z.string().min(1, "Title is required."),  
+  status: z.string().min(1, "Please select a status."),  
+  // 添加其他必要的字段  
+})  
+  
+export type EntityName = z.infer<typeof entityNameSchema>
+5. 创建上下文（Context）
+在 src/features/entity-name/context/entity-name-context.tsx 中创建上下文：
+
+import React, { useState } from 'react'  
+import useDialogState from '@/hooks/use-dialog-state'  
+import { EntityName } from '../data/schema'  
+  
+type EntityNameDialogType = 'create' | 'update' | 'delete' | 'import'  
+  
+interface EntityNameContextType {  
+  open: EntityNameDialogType | null  
+  setOpen: (str: EntityNameDialogType | null) => void  
+  currentRow: EntityName | null  
+  setCurrentRow: React.Dispatch<React.SetStateAction<EntityName | null>>  
+}  
+  
+const EntityNameContext = React.createContext<EntityNameContextType | null>(null)  
+  
+export default function EntityNameProvider({ children }: { children: React.ReactNode }) {  
+  const [open, setOpen] = useDialogState<EntityNameDialogType>(null)  
+  const [currentRow, setCurrentRow] = useState<EntityName | null>(null)  
+  return (  
+    <EntityNameContext.Provider value={{ open, setOpen, currentRow, setCurrentRow }}>  
+      {children}  
+    </EntityNameContext.Provider>  
+  )  
+}  
+  
+export const useEntityName = () => {  
+  const context = React.useContext(EntityNameContext)  
+  if (!context) {  
+    throw new Error('useEntityName must be used within EntityNameProvider')  
+  }  
+  return context  
+}
+6. 创建主页面组件
+在 src/features/entity-name/index.tsx 中创建主页面：
+
+import { Header } from '@/components/layout/header'  
+import { Main } from '@/components/layout/main'  
+import { ProfileDropdown } from '@/components/profile-dropdown'  
+import { Search } from '@/components/search'  
+import { ThemeSwitch } from '@/components/theme-switch'  
+import { columns } from './components/columns'  
+import { DataTable } from './components/data-table'  
+import { EntityNameDialogs } from './components/entity-name-dialogs'  
+import { EntityNamePrimaryButtons } from './components/entity-name-primary-buttons'  
+import EntityNameProvider from './context/entity-name-context'  
+import { entityNames } from './data/entity-name'  
+  
+export default function EntityName() {  
+  return (  
+    <EntityNameProvider>  
+      <Header fixed>  
+        <Search />  
+        <div className='ml-auto flex items-center space-x-4'>  
+          <ThemeSwitch />  
+          <ProfileDropdown />  
+        </div>  
+      </Header>  
+  
+      <Main>  
+        <div className='mb-2 flex flex-wrap items-center justify-between space-y-2 gap-x-4'>  
+          <div>  
+            <h2 className='text-2xl font-bold tracking-tight'>Entity Name</h2>  
+            <p className='text-muted-foreground'>  
+              Here's a list of your entity names!  
+            </p>  
+          </div>  
+          <EntityNamePrimaryButtons />  
+        </div>  
+        <div className='-mx-4 flex-1 overflow-auto px-4 py-1 lg:flex-row lg:space-y-0 lg:space-x-12'>  
+          <DataTable data={entityNames} columns={columns} />  
+        </div>  
+      </Main>  
+  
+      <EntityNameDialogs />  
+    </EntityNameProvider>  
+  )  
+}
+7. 创建表单对话框组件
+在 src/features/entity-name/components/entity-name-mutate-drawer.tsx 中创建表单对话框：
+
+import { z } from 'zod'  
+import { useForm } from 'react-hook-form'  
+import { zodResolver } from '@hookform/resolvers/zod'  
+import { showSubmittedData } from '@/utils/show-submitted-data'  
+import { Button } from '@/components/ui/button'  
+import {  
+  Sheet,  
+  SheetContent,  
+  SheetDescription,  
+  SheetHeader,  
+  SheetTitle,  
+} from '@/components/ui/sheet'  
+import {  
+  Form,  
+  FormControl,  
+  FormField,  
+  FormItem,  
+  FormLabel,  
+  FormMessage,  
+} from '@/components/ui/form'  
+import { Input } from '@/components/ui/input'  
+import { SelectDropdown } from '@/components/ui/select-dropdown'  
+  
+const formSchema = z.object({  
+  title: z.string().min(1, 'Title is required.'),  
+  status: z.string().min(1, 'Please select a status.'),  
+  // 添加其他必要的字段  
+})  
+  
+type EntityNameForm = z.infer<typeof formSchema>  
+  
+interface Props {  
+  open: boolean  
+  onOpenChange: (open: boolean) => void  
+  currentRow?: EntityNameForm  
+}  
+  
+export function EntityNameMutateDrawer({ open, onOpenChange, currentRow }: Props) {  
+  const isUpdate = !!currentRow  
+  
+  const form = useForm<EntityNameForm>({  
+    resolver: zodResolver(formSchema),  
+    defaultValues: currentRow ?? {  
+      title: '',  
+      status: '',  
+      // 其他默认值  
+    },  
+  })  
+  
+  const onSubmit = (data: EntityNameForm) => {  
+    onOpenChange(false)  
+    form.reset()  
+    showSubmittedData(data)  
+  }  
+  
+  return (  
+    <Sheet  
+      open={open}  
+      onOpenChange={(v) => {  
+        onOpenChange(v)  
+        form.reset()  
+      }}  
+    >  
+      <SheetContent className='flex flex-col'>  
+        <SheetHeader className='text-left'>  
+          <SheetTitle>{isUpdate ? 'Update' : 'Create'} Entity Name</SheetTitle>  
+          <SheetDescription>  
+            {isUpdate  
+              ? 'Update the entity name by providing necessary info.'  
+              : 'Add a new entity name by providing necessary info.'}  
+            Click save when you're done.  
+          </SheetDescription>  
+        </SheetHeader>  
+        <Form {...form}>  
+          <form  
+            id='entity-name-form'  
+            onSubmit={form.handleSubmit(onSubmit)}  
+            className='flex-1 space-y-5 px-4'  
+          >  
+            <FormField  
+              control={form.control}  
+              name='title'  
+              render={({ field }) => (  
+                <FormItem className='space-y-1'>  
+                  <FormLabel>Title</FormLabel>  
+                  <FormControl>  
+                    <Input {...field} placeholder='Enter a title' />  
+                  </FormControl>  
+                  <FormMessage />  
+                </FormItem>  
+              )}  
+            />  
+            <FormField  
+              control={form.control}  
+              name='status'  
+              render={({ field }) => (  
+                <FormItem className='space-y-1'>  
+                  <FormLabel>Status</FormLabel>  
+                  <SelectDropdown  
+                    defaultValue={field.value}  
+                    onValueChange={field.onChange}  
+                    placeholder='Select status'  
+                    items={[  
+                      { label: 'Active', value: 'active' },  
+                      { label: 'Inactive', value: 'inactive' },  
+                      // 其他状态选项  
+                    ]}  
+                  />  
+                  <FormMessage />  
+                </FormItem>  
+              )}  
+            />  
+            {/* 添加更多表单字段 */}  
+          </form>  
+        </Form>  
+        <div className='mt-auto flex justify-end space-x-2 pt-4'>  
+          <Button variant='outline' onClick={() => onOpenChange(false)}>  
+            Cancel  
+          </Button>  
+          <Button type='submit' form='entity-name-form'>  
+            {isUpdate ? 'Update' : 'Create'}  
+          </Button>  
+        </div>  
+      </SheetContent>  
+    </Sheet>  
+  )  
+}
+8. 创建表格行操作组件
+在 src/features/entity-name/components/data-table-row-actions.tsx 中创建表格行操作：
+
+import { DotsHorizontalIcon } from '@radix-ui/react-icons'  
+import { Row } from '@tanstack/react-table'  
+import { IconTrash } from '@tabler/icons-react'  
+import { Button } from '@/components/ui/button'  
+import {  
+  DropdownMenu,  
+  DropdownMenuContent,  
+  DropdownMenuItem,  
+  DropdownMenuSeparator,  
+  DropdownMenuShortcut,  
+  DropdownMenuTrigger,  
+} from '@/components/ui/dropdown-menu'  
+import { useEntityName } from '../context/entity-name-context'  
+import { entityNameSchema } from '../data/schema'  
+  
+interface DataTableRowActionsProps<TData> {  
+  row: Row<TData>  
+}  
+  
+export function DataTableRowActions<TData>({  
+  row,  
+}: DataTableRowActionsProps<TData>) {  
+  const entityName = entityNameSchema.parse(row.original)  
+  
+  const { setOpen, setCurrentRow } = useEntityName()  
+  
+  return (  
+    <DropdownMenu modal={false}>  
+      <DropdownMenuTrigger asChild>  
+        <Button  
+          variant='ghost'  
+          className='data-[state=open]:bg-muted flex h-8 w-8 p-0'  
+        >  
+          <DotsHorizontalIcon className='h-4 w-4' />  
+          <span className='sr-only'>Open menu</span>  
+        </Button>  
+      </DropdownMenuTrigger>  
+      <DropdownMenuContent align='end' className='w-[160px]'>  
+        <DropdownMenuItem  
+          onClick={() => {  
+            setCurrentRow(entityName)  
+            setOpen('update')  
+          }}  
+        >  
+          Edit  
+        </DropdownMenuItem>  
+        <DropdownMenuSeparator />  
+        <DropdownMenuItem  
+          onClick={() => {  
+            setCurrentRow(entityName)  
+            setOpen('delete')  
+          }}  
+        >  
+          Delete  
+          <DropdownMenuShortcut>  
+            <IconTrash size={16} />  
+          </DropdownMenuShortcut>  
+        </DropdownMenuItem>  
+      </DropdownMenuContent>  
+    </DropdownMenu>  
+  )  
+}
+9. 更新路由配置
+在 src/routeTree.gen.ts 中添加新路由：
+
+// 添加新的路由定义  
+export const AuthenticatedEntityNameIndexRoute = createFileRoute(  
+  '/_authenticated/entity-name/'  
+)({  
+  component: EntityName,  
+})  
+  
+// 更新 AuthenticatedRouteRouteChildren 接口  
+interface AuthenticatedRouteRouteChildren {  
+  // 现有路由...  
+  AuthenticatedEntityNameIndexRoute: typeof AuthenticatedEntityNameIndexRoute  
+}  
+  
+// 更新 AuthenticatedRouteRouteChildren 对象  
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {  
+  // 现有路由...  
+  AuthenticatedEntityNameIndexRoute: AuthenticatedEntityNameIndexRoute,  
+}
+10. 添加导航项
+在导航配置文件中添加新功能的导航项：
+
+// 在 src/components/layout/sidebar-data.tsx 中添加  
+{  
+  title: "Entity Name",  
+  url: "/entity-name",  
+  icon: IconEntityName, // 使用适当的图标  
+}
+11. 测试和提交
+完成功能开发后，进行测试并提交代码：
+
+pnpm lint && pnpm format && pnpm build  
+git add .  
+git commit -m "feat: add entity name feature"  
+git push origin feature/entity-name
+TSX 文件所在目录和功能
+以下是开发 {entity.name} 功能时需要创建的主要 TSX 文件，它们的所在目录和功能：
+
+1. 主页面和入口
+src/features/entity-name/index.tsx
+功能: 实体名称模块的主入口组件，负责渲染实体名称管理页面的整体布局，包括头部、主体内容和相关对话框。
+
+这个文件是实体名称模块的主页面，它使用 EntityNameProvider 提供状态管理，包含搜索、主题切换和用户资料下拉菜单等功能，并显示实体名称列表。
+
+2. 组件文件
+src/features/entity-name/components/entity-name-mutate-drawer.tsx
+功能: 创建和编辑实体名称的抽屉式表单组件，提供实体名称信息的输入界面。
+
+这个组件使用 Zod 进行表单验证，React Hook Form 管理表单状态，并提供了标题、状态等字段的输入。
+
+src/features/entity-name/components/entity-name-import-dialog.tsx
+功能: 导入实体名称的对话框组件，允许用户上传 CSV 文件导入实体名称数据。
+
+这个组件提供文件上传功能，验证上传的文件，并处理导入操作。
+
+src/features/entity-name/components/data-table-row-actions.tsx
+功能: 实体名称表格中每行的操作按

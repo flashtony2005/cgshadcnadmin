@@ -1,0 +1,31 @@
+import { IconDownload, IconPlus } from '@tabler/icons-react'
+import { Button } from '@/components/ui/button'
+import { {{ use_entity_hook }} } from '../context/{{ entity_name_slug }}-context'
+
+/**
+ * Primary action buttons for {{ entity_type_name_pascal_singular }} feature
+ * Includes Create button and optional Import button
+ */
+export function {{ entity_type_name_pascal_singular }}PrimaryButtons() {
+  const { setOpen } = {{ use_entity_hook }}()
+  
+  return (
+    <div className='flex gap-2'>
+      {# Conditionally render Import button if feature enabled #}
+      {% if enable_import_feature %}
+      <Button
+        variant='outline'
+        className='space-x-1'
+        onClick={() => setOpen('import')}
+      >
+        <span>导入</span> <IconDownload size={18} />
+      </Button>
+      {% endif %}
+      
+      {# Always show Create button #}
+      <Button className='space-x-1' onClick={() => setOpen('create')}>
+        <span>新增</span> <IconPlus size={18} />
+      </Button>
+    </div>
+  )
+}

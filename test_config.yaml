@@ -1,0 +1,18 @@
+
+project:
+  name: "test-comma-entities"
+  output_dir: "./generated_test"
+  api_base_url: "/api"
+  frontend_framework: "react"
+
+entities:
+  - name: "RentalPlans,tenants,users"
+    fields:
+      - name: "id"
+        type: "i64"
+        primary_key: true
+      - name: "name"
+        type: "string"
+      - name: "created_at"
+        type: "timestamptz"
+        default_now: true

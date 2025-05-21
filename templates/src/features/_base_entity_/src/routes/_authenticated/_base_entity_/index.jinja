@@ -1,0 +1,6 @@
+import { createFileRoute } from '@tanstack/react-router'
+import {{ entity_name_pascal_case }} from '@/features/{{ entity_name_kebab_case }}'
+
+export const Route = createFileRoute('/_authenticated/{{ entity_name_kebab_case }}/')({
+  component: {{ entity_name_pascal_case }},
+})

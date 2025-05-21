@@ -1,0 +1,233 @@
+'use client'
+
+import * as React from 'react'
+import { z } from 'zod'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+// import { showSubmittedData } from '@/utils/show-submitted-data' // Placeholder, actual submission logic will use context
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { SelectDropdown } from '@/components/select-dropdown' // Assuming SelectDropdown is a generic component
+
+// Import specific entity data, types, and context
+import { {{ entity_type_name_pascal_singular }} } from '../data/schema'
+// Assuming entity_fields will provide necessary info for options, or a specific data import like below
+// import * as {{ entity_name_camel_case_singular_prefix }}DataAll from '../data/data'; 
+import { {{ use_entity_hook }} } from '../context/{{ entity_name_slug }}-context'
+
+// Dynamically build the Zod schema based on entity_fields
+// This is a simplified representation. Real-world usage might require more complex logic or a helper function.
+const getFormSchema = (entityFields: any[], isEdit: boolean) => {
+  let schemaObject: { [key: string]: z.ZodTypeAny } = {};
+  entityFields.forEach(field => {
+    let fieldSchema: z.ZodTypeAny;
+    switch (field.type) {
+      case 'email':
+        fieldSchema = z.string().email({ message: `${field.comment || field.name} is invalid.` });
+        break;
+
+      case 'number':
+        fieldSchema = z.coerce.number();
+        break;
+      case 'boolean':
+        fieldSchema = z.boolean();
+        break;
+      case 'date':
+        fieldSchema = z.coerce.date(); // Use coerce.date for string inputs from date picker
+        break;
+      // Add more types as needed, e.g., 'enum', 'url'
+      default: // Default to string
+        fieldSchema = z.string();
+    }
+    if (field.required) {
+      if (field.type === 'string' || field.type === 'email') {
+        fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.comment || field.name} is required.` });
+      }
+    }
+    schemaObject[field.name] = fieldSchema;
+  });
+
+  // Add isEdit field for conditional validation logic
+  schemaObject['isEdit'] = z.boolean();
+
+
+  let baseSchema = z.object(schemaObject);
+
+  return baseSchema;
+};
+
+// Define Props interface for the dialog component
+interface {{ entity_type_name_pascal_singular }}ActionDialogProps {
+  currentRow?: {{ entity_type_name_pascal_singular }};
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  // entityFields prop removed
+}
+
+export function {{ entity_type_name_pascal_singular }}ActionDialog({
+  currentRow,
+  open,
+  onOpenChange
+  // entityFields prop removed
+}: {{ entity_type_name_pascal_singular }}ActionDialogProps) {
+  const isEdit = !!currentRow;
+  const { {{ add_entity_func }}, {{ update_entity_func }} } = {{ use_entity_hook }}();
+
+  // entity_fields from Jinja context, made available as a JS const
+  const entityFields = {{ entity_fields | tojson | safe }};
+
+  // Memoize the form schema to prevent re-computation on every render
+  // The entityFields in the dependency array now refers to the local const
+  const formSchema = React.useMemo(() => getFormSchema(entityFields, isEdit), [entityFields, isEdit]);
+  type {{ entity_type_name_pascal_singular }}FormValues = z.infer<typeof formSchema>;
+
+  const form = useForm<{{ entity_type_name_pascal_singular }}FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: React.useMemo(() => {
+      const defaults: any = { isEdit };
+      entityFields.forEach(field => {
+        defaults[field.name] = currentRow?.[field.name as keyof {{ entity_type_name_pascal_singular }}] ?? (field.type === 'boolean' ? false : '');
+      });
+      return defaults;
+    }, [currentRow, entityFields, isEdit]),
+  });
+
+  React.useEffect(() => {
+    // Reset form when currentRow or isEdit status changes (e.g. dialog opens for new/edit)
+    const defaults: any = { isEdit };
+    entityFields.forEach(field => {
+      defaults[field.name] = currentRow?.[field.name as keyof {{ entity_type_name_pascal_singular }}] ?? (field.type === 'boolean' ? false : '');
+    });
+    form.reset(defaults);
+  }, [currentRow, entityFields, form, isEdit]);
+
+  const onSubmit = async (values: {{ entity_type_name_pascal_singular }}FormValues) => {
+    // Remove isEdit from the data to be submitted
+    const { isEdit: editFlag, ...submissionData } = values;
+    
+    try {
+      if (isEdit && currentRow?.id) {
+        await {{ update_entity_func }}(currentRow.id, submissionData as Partial<{{ entity_type_name_pascal_singular }}>);
+      } else {
+        await {{ add_entity_func }}(submissionData as Omit<{{ entity_type_name_pascal_singular }}, 'id'>);
+      }
+      form.reset();
+      onOpenChange(false);
+      // Optionally, add a success toast/notification here
+    } catch (error) {
+      // Optionally, add an error toast/notification here
+      console.error("Failed to save {{ entity_display_name_singular }}:", error);
+    }
+  };
+
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(state) => {
+        if (!state) { // Only reset if dialog is closing
+          const defaults: any = { isEdit };
+          entityFields.forEach(field => {
+            defaults[field.name] = currentRow?.[field.name as keyof {{ entity_type_name_pascal_singular }}] ?? (field.type === 'boolean' ? false : '');
+          });
+          form.reset(defaults);
+        }
+        onOpenChange(state);
+      }}
+    >
+      <DialogContent className='sm:max-w-lg'>
+        <DialogHeader className='text-left'>
+          <DialogTitle>{isEdit ? 'Edit {{ entity_display_name_singular }}' : 'Add New {{ entity_display_name_singular }}'}</DialogTitle>
+          <DialogDescription>
+            {isEdit ? 'Update the {{ entity_display_name_singular_lowercase }} here. ' : 'Create new {{ entity_display_name_singular_lowercase }} here. '}
+            Click save when you&apos;re done.
+          </DialogDescription>
+        </DialogHeader>
+        <div className='-mr-4 h-[26.25rem] w-full overflow-y-auto py-1 pr-4'> {/* Consider making height dynamic or configurable */}
+          <Form {...form}>
+            <form
+              id='{{ entity_name_slug }}-form'
+              onSubmit={form.handleSubmit(onSubmit)}
+              className='space-y-4 p-0.5'
+            >
+            {% for field_item in entity_fields %}
+              {# Conditional rendering for 'id' field can be added here if is_edit is available in Jinja context #}
+              {# Example: {% if field_item.name == 'id' and is_edit_jinja %} ... {% else %} ... {% endif %} #}
+              <FormField
+                control={form.control}
+                key={"{{ field_item.name }}"}
+                name={"{{ field_item.name }}"}
+                render={({ field }) => ( // 'field' is from react-hook-form
+                  <FormItem className='grid grid-cols-6 items-center space-y-0 gap-x-4 gap-y-1'>
+                    <FormLabel className='col-span-2 text-right'>
+                      {{ field_item.comment | default(field_item.name) }}
+                    </FormLabel>
+                    <FormControl>
+                      {% if field_item.type == 'select' %}
+                        <SelectDropdown
+                          defaultValue={field.value}
+                          onValueChange={field.onChange}
+                          placeholder="Select a {{ field_item.comment | default(field_item.name) }}"
+                          className='col-span-4'
+                          items={ {{ field_item.options | tojson | default('[]') | safe }} }
+                        />
+                      {% elif field_item.type == 'boolean' %}
+                        <Input 
+                          type='checkbox' 
+                          checked={field.value} 
+                          onChange={field.onChange} 
+                          className='col-span-4' 
+                        />
+                      {% elif field_item.type == 'date' %}
+                        <Input
+                          placeholder="{{ field_item.placeholder | default('Enter ' ~ (field_item.comment | default(field_item.name))) }}"
+                          className='col-span-4'
+                          autoComplete='off'
+                          type="date"
+                          {...field}
+                          value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                        />
+                      {% else %} {# Default for string, email, number etc. #}
+                        <Input
+                          placeholder="{{ field_item.placeholder | default('Enter ' ~ (field_item.comment | default(field_item.name))) }}"
+                          className='col-span-4'
+                          autoComplete='off'
+                          type={ "{{ 'email' if field_item.type == 'email' else 'number' if field_item.type == 'number' else 'text' }}" }
+                          {...field}
+                          value={field.value || ''}
+                        />
+                      {% endif %}
+                    </FormControl>
+                    <FormMessage className='col-span-4 col-start-3' />
+                  </FormItem>
+                )}
+              />
+            {% endfor %}
+            </form>
+          </Form>
+        </div>
+        <DialogFooter>
+          <Button type='submit' form='{{ entity_name_slug }}-form'>
+            Save changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
